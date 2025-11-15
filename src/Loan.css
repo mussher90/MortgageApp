@@ -1,0 +1,92 @@
+.loan-component {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  border: 2px solid #e0e0e0;
+}
+
+.loan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.loan-header h3 {
+  margin: 0;
+  color: #667eea;
+  font-size: 1.5rem;
+}
+
+.btn-remove-loan {
+  padding: 8px 16px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-remove-loan:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.loan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.loan-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loan-form .form-group label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.loan-form .form-group input {
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.loan-form .form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.loan-form .form-section-divider {
+  margin: 20px 0 15px 0;
+  padding-top: 15px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.loan-form .form-section-divider h4 {
+  color: #667eea;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.loan-form .form-help-text {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+  margin-top: -4px;
+}
+
