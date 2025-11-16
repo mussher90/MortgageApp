@@ -150,7 +150,7 @@ function App() {
 
             {results.totalMonthlyPayment > 0 && (
               <div className="monthly-payment-display">
-                {Object.entries(results.loanMonthlyPayments).map(([loanId, payments], index) => {
+                {Object.entries(results.loanMonthlyPayments).map(([loanId, payments]) => {
                   const loanNumber = loans.findIndex(l => l.id === loanId) + 1;
                   return (
                     <React.Fragment key={loanId}>
