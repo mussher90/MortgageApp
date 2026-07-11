@@ -47,14 +47,14 @@ body {
 .input-section {
   background: white;
   border-radius: 12px;
-  padding: 30px;
+  padding: 20px 24px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .mortgage-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .form-group {
@@ -131,14 +131,13 @@ body {
 }
 
 .btn {
-  padding: 12px 24px;
+  padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  flex: 1;
 }
 
 .btn-primary {
