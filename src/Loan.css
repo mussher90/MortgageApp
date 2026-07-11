@@ -90,3 +90,36 @@
   margin-top: -4px;
 }
 
+.term-mode-toggle {
+  display: flex;
+  gap: 0;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.term-mode-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: #f5f5f5;
+  color: #666;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.term-mode-btn:not(:last-child) {
+  border-right: 2px solid #e0e0e0;
+}
+
+.term-mode-btn:hover {
+  background: #ebebeb;
+}
+
+.term-mode-btn.active {
+  background: #667eea;
+  color: white;
+}
+

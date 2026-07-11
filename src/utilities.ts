@@ -37,6 +37,64 @@ export interface MortgageComparison {
 }
 
 /**
+ * Calculates loan term in years from a maturity date relative to a start date (defaults to today)
+ */
+export function calculateTermYearsFromMaturityDate(
+  maturityDate: string,
+  startDate: Date = new Date()
+): number {
+  if (!maturityDate) {
+    return 0;
+  }
+
+  const maturity = new Date(maturityDate + 'T00:00:00');
+  if (isNaN(maturity.getTime())) {
+    return 0;
+  }
+
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  if (maturity <= start) {
+    return 0;
+  }
+
+  let months =
+    (maturity.getFullYear() - start.getFullYear()) * 12 +
+    (maturity.getMonth() - start.getMonth());
+
+  if (maturity.getDate() < start.getDate()) {
+    months -= 1;
+  }
+
+  return Math.max(months / 12, 1 / 12);
+}
+
+/**
+ * Formats a date as YYYY-MM-DD for use in date inputs
+ */
+export function formatDateForInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Calculates a maturity date from a loan term in years
+ */
+export function calculateMaturityDateFromTermYears(
+  termYears: number,
+  startDate: Date = new Date()
+): string {
+  if (termYears <= 0) {
+    return '';
+  }
+
+  const months = Math.round(termYears * 12);
+  const maturity = new Date(startDate.getFullYear(), startDate.getMonth() + months, startDate.getDate());
+  return formatDateForInput(maturity);
+}
+
+/**
  * Gets the number of days in a month (accounting for leap years)
  */
 function getDaysInMonth(year: number, month: number): number {
@@ -76,6 +134,54 @@ export function calculateMonthlyPayment(
     (Math.pow(1 + effectiveMonthlyRate, numberOfMonths) - 1);
 
   return monthlyPayment;
+}
+
+/**
+ * Calculates extra payment amount from a percentage of the standard monthly payment
+ */
+export function calculateExtraPaymentFromPercent(
+  mainMonthlyPayment: number,
+  extraPaymentPercent: number
+): number {
+  const percent = Math.min(Math.max(extraPaymentPercent, 0), 20);
+  return (mainMonthlyPayment * percent) / 100;
+}
+
+/**
+ * Calculates extra payment amount from a target total monthly repayment
+ */
+export function calculateExtraPaymentFromMonthlyRepayment(
+  mainMonthlyPayment: number,
+  monthlyRepaymentAmount: number
+): number {
+  if (mainMonthlyPayment <= 0) {
+    return 0;
+  }
+  return Math.max(monthlyRepaymentAmount - mainMonthlyPayment, 0);
+}
+
+/**
+ * Calculates extra payment percent from a target total monthly repayment
+ */
+export function calculateExtraPaymentPercentFromMonthlyRepayment(
+  mainMonthlyPayment: number,
+  monthlyRepaymentAmount: number
+): number {
+  if (mainMonthlyPayment <= 0) {
+    return 0;
+  }
+  const percent = ((monthlyRepaymentAmount - mainMonthlyPayment) / mainMonthlyPayment) * 100;
+  return Math.min(Math.max(percent, 0), 20);
+}
+
+/**
+ * Calculates total monthly repayment from a standard payment and extra percent
+ */
+export function calculateMonthlyRepaymentFromPercent(
+  mainMonthlyPayment: number,
+  extraPaymentPercent: number
+): number {
+  return mainMonthlyPayment + calculateExtraPaymentFromPercent(mainMonthlyPayment, extraPaymentPercent);
 }
 
 /**
@@ -326,7 +432,7 @@ export interface LoanInput {
   amount: number;
   rate: number;
   termYears: number;
-  extraPaymentPercent: number;
+  extraPaymentAmount: number;
   offsetAccount: OffsetAccount | null;
 }
 
@@ -362,7 +468,7 @@ export function calculateMultipleLoans(loans: LoanInput[]): {
   // Calculate monthly payments for each loan
   for (const loan of loans) {
     const mainMonthlyPayment = calculateMonthlyPayment(loan.amount, loan.rate, loan.termYears);
-    const extraPaymentAmount = (mainMonthlyPayment * loan.extraPaymentPercent) / 100;
+    const extraPaymentAmount = Math.max(loan.extraPaymentAmount, 0);
 
     // Offset account is just an amount that reduces interest on the main loan
     // It doesn't have its own separate loan - it just offsets the main loan balance
