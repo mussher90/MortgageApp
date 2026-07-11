@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { Chart } from './chart';
 import { Loan, LoanData } from './Loan';
-import { calculateMultipleLoans, LoanInput, OffsetAccount } from './utilities';
+import {
+  calculateExtraPaymentFromMonthlyRepayment,
+  calculateExtraPaymentFromPercent,
+  calculateMonthlyPayment,
+  calculateMultipleLoans,
+  calculateTermYearsFromMaturityDate,
+  LoanInput,
+  OffsetAccount,
+} from './utilities';
 import './App.css';
 
 function App() {
@@ -10,8 +18,12 @@ function App() {
       id: '1',
       amount: '',
       rate: '',
+      termMode: 'years',
       termYears: '',
+      maturityDate: '',
+      extraPaymentMode: 'percent',
       extraPaymentPercent: '0',
+      monthlyRepaymentAmount: '',
       offsetAmount: '',
     },
   ]);
@@ -35,8 +47,12 @@ function App() {
         id: newLoanId,
         amount: '',
         rate: '',
+        termMode: 'years',
         termYears: '',
+        maturityDate: '',
+        extraPaymentMode: 'percent',
         extraPaymentPercent: '0',
+        monthlyRepaymentAmount: '',
         offsetAmount: '',
       },
     ]);
@@ -56,11 +72,23 @@ function App() {
       .map((loan) => {
         const amount = parseFloat(loan.amount);
         const rate = parseFloat(loan.rate);
-        const term = parseFloat(loan.termYears);
+        const term =
+          loan.termMode === 'maturity'
+            ? calculateTermYearsFromMaturityDate(loan.maturityDate)
+            : parseFloat(loan.termYears);
         const extraPercent = Math.min(Math.max(parseFloat(loan.extraPaymentPercent) || 0, 0), 20);
+        const monthlyRepaymentAmount = Math.max(parseFloat(loan.monthlyRepaymentAmount) || 0, 0);
 
         if (amount > 0 && rate >= 0 && term > 0) {
           const offsetAmount = Math.max(parseFloat(loan.offsetAmount) || 0, 0);
+          const standardMonthlyPayment = calculateMonthlyPayment(amount, rate, term);
+          const extraPaymentAmount =
+            loan.extraPaymentMode === 'amount'
+              ? calculateExtraPaymentFromMonthlyRepayment(
+                  standardMonthlyPayment,
+                  monthlyRepaymentAmount
+                )
+              : calculateExtraPaymentFromPercent(standardMonthlyPayment, extraPercent);
           
           // Offset account is just an amount that offsets the main loan
           // It uses the same rate and term as the main loan
@@ -76,7 +104,7 @@ function App() {
             amount,
             rate,
             termYears: term,
-            extraPaymentPercent: extraPercent,
+            extraPaymentAmount,
             offsetAccount,
           };
         }
@@ -98,8 +126,12 @@ function App() {
         id: '1',
         amount: '',
         rate: '',
+        termMode: 'years',
         termYears: '',
+        maturityDate: '',
+        extraPaymentMode: 'percent',
         extraPaymentPercent: '0',
+        monthlyRepaymentAmount: '',
         offsetAmount: '',
       },
     ]);
