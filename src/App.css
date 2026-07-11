@@ -15,7 +15,7 @@ body {
 }
 
 .app {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -178,6 +178,10 @@ body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.monthly-payment-display--total {
+  margin-bottom: 30px;
 }
 
 .monthly-payment-item {

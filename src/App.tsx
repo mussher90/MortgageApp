@@ -153,6 +153,7 @@ function App() {
                 key={loan.id}
                 loanNumber={index + 1}
                 loan={loan}
+                payments={results?.loanMonthlyPayments[loan.id] ?? null}
                 onUpdate={(updatedLoan) => handleLoanUpdate(index, updatedLoan)}
                 onRemove={loans.length > 1 ? () => handleRemoveLoan(index) : undefined}
                 canRemove={loans.length > 1}
@@ -181,30 +182,9 @@ function App() {
             <h2>Yearly Payment Breakdown</h2>
 
             {results.totalMonthlyPayment > 0 && (
-              <div className="monthly-payment-display">
-                {Object.entries(results.loanMonthlyPayments).map(([loanId, payments]) => {
-                  const loanNumber = loans.findIndex(l => l.id === loanId) + 1;
-                  return (
-                    <React.Fragment key={loanId}>
-                      <div className="monthly-payment-item">
-                        <span className="monthly-payment-label">Loan {loanNumber} Monthly Payment:</span>
-                        <span className="monthly-payment-value">
-                          ${payments.main.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      {payments.extra > 0 && (
-                        <div className="monthly-payment-item">
-                          <span className="monthly-payment-label">Loan {loanNumber} Additional Repayment:</span>
-                          <span className="monthly-payment-value">
-                            ${payments.extra.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+              <div className="monthly-payment-display monthly-payment-display--total">
                 <div className="monthly-payment-item highlight">
-                  <span className="monthly-payment-label">Total Monthly Payment:</span>
+                  <span className="monthly-payment-label">Total Monthly Payment (All Loans):</span>
                   <span className="monthly-payment-value">
                     ${results.totalMonthlyPayment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>

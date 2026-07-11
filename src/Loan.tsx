@@ -24,15 +24,29 @@ export interface LoanData {
   offsetAmount: string;
 }
 
+export interface LoanMonthlyPayments {
+  main: number;
+  extra: number;
+  offset: number;
+}
+
 interface LoanProps {
   loanNumber: number;
   loan: LoanData;
+  payments?: LoanMonthlyPayments | null;
   onUpdate: (loan: LoanData) => void;
   onRemove?: () => void;
   canRemove: boolean;
 }
 
-export const Loan: React.FC<LoanProps> = ({ loanNumber, loan, onUpdate, onRemove, canRemove }) => {
+export const Loan: React.FC<LoanProps> = ({
+  loanNumber,
+  loan,
+  payments,
+  onUpdate,
+  onRemove,
+  canRemove,
+}) => {
   const handleChange = (field: keyof LoanData, value: string) => {
     onUpdate({ ...loan, [field]: value });
   };
@@ -58,11 +72,6 @@ export const Loan: React.FC<LoanProps> = ({ loanNumber, loan, onUpdate, onRemove
       : loan.termYears;
     onUpdate({ ...loan, termMode: mode, termYears });
   };
-
-  const calculatedTermYears =
-    loan.termMode === 'maturity' && loan.maturityDate
-      ? calculateTermYearsFromMaturityDate(loan.maturityDate)
-      : 0;
 
   const getStandardMonthlyPayment = () => {
     const amount = parseFloat(loan.amount);
@@ -113,18 +122,10 @@ export const Loan: React.FC<LoanProps> = ({ loanNumber, loan, onUpdate, onRemove
     onUpdate({ ...loan, extraPaymentMode: mode, extraPaymentPercent: percent });
   };
 
-  const calculatedExtraPayment =
-    loan.extraPaymentMode === 'amount' && standardMonthlyPayment > 0 && loan.monthlyRepaymentAmount
-      ? Math.max(parseFloat(loan.monthlyRepaymentAmount) - standardMonthlyPayment, 0)
-      : 0;
+  const formatCurrency = (value: number) =>
+    value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const calculatedTotalRepayment =
-    loan.extraPaymentMode === 'percent' && standardMonthlyPayment > 0
-      ? calculateMonthlyRepaymentFromPercent(
-          standardMonthlyPayment,
-          parseFloat(loan.extraPaymentPercent) || 0
-        )
-      : 0;
+  const totalMonthlyPayment = payments ? payments.main + payments.extra + payments.offset : 0;
 
   return (
     <div className="loan-component">
@@ -137,211 +138,196 @@ export const Loan: React.FC<LoanProps> = ({ loanNumber, loan, onUpdate, onRemove
         )}
       </div>
 
-      <div className="loan-form">
-        <div className="loan-form-row loan-form-row--split">
-          <div className="form-group form-group--amount">
-            <label htmlFor={`loanAmount-${loan.id}`}>Loan Amount ($)</label>
-            <input
-              id={`loanAmount-${loan.id}`}
-              type="number"
-              min="0"
-              step="1"
-              value={loan.amount}
-              onChange={(e) => handleChange('amount', e.target.value)}
-              placeholder="500000"
-              required
-            />
-          </div>
-
-          <div className="form-group form-group--rate">
-            <label htmlFor={`interestRate-${loan.id}`}>Interest Rate (%)</label>
-            <input
-              id={`interestRate-${loan.id}`}
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={loan.rate}
-              onChange={(e) => handleChange('rate', e.target.value)}
-              placeholder="4.5"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="loan-form-row loan-form-row--duration">
-          <div className="form-group form-group--toggle">
-            <label>Loan Duration</label>
-            <div className="term-mode-toggle" role="group" aria-label="Loan duration input mode">
-              <button
-                type="button"
-                className={`term-mode-btn ${loan.termMode === 'years' ? 'active' : ''}`}
-                onClick={() => handleTermModeChange('years')}
-              >
-                Loan Term
-              </button>
-              <button
-                type="button"
-                className={`term-mode-btn ${loan.termMode === 'maturity' ? 'active' : ''}`}
-                onClick={() => handleTermModeChange('maturity')}
-              >
-                Maturity Date
-              </button>
-            </div>
-          </div>
-
-          {loan.termMode === 'years' ? (
-            <div className="form-group form-group--term">
-              <label htmlFor={`termYears-${loan.id}`}>Term (Years)</label>
+      <div className="loan-body">
+        <div className="loan-card loan-card--input">
+          <div className="loan-form">
+            <div className="form-group">
+              <label htmlFor={`loanAmount-${loan.id}`}>Loan Amount ($)</label>
               <input
-                id={`termYears-${loan.id}`}
+                id={`loanAmount-${loan.id}`}
                 type="number"
-                min="1"
-                max="50"
+                min="0"
                 step="1"
-                value={loan.termYears}
-                onChange={(e) => handleChange('termYears', e.target.value)}
-                placeholder="30"
+                value={loan.amount}
+                onChange={(e) => handleChange('amount', e.target.value)}
+                placeholder="500000"
                 required
               />
             </div>
-          ) : (
-            <div className="form-group form-group--date">
-              <label htmlFor={`maturityDate-${loan.id}`}>Maturity Date</label>
+
+            <div className="form-group">
+              <label htmlFor={`interestRate-${loan.id}`}>Interest Rate (%)</label>
               <input
-                id={`maturityDate-${loan.id}`}
-                type="date"
-                value={loan.maturityDate}
-                onChange={(e) => handleChange('maturityDate', e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
+                id={`interestRate-${loan.id}`}
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={loan.rate}
+                onChange={(e) => handleChange('rate', e.target.value)}
+                placeholder="4.5"
                 required
               />
-              {calculatedTermYears > 0 && (
-                <small className="form-help-text">
-                  Calculated loan term: {calculatedTermYears.toFixed(1)} years
-                </small>
+            </div>
+
+            <div className="loan-form-row loan-form-row--paired">
+              <div className="form-group form-group--toggle">
+                <label>Loan Duration</label>
+                <div className="term-mode-toggle" role="group" aria-label="Loan duration input mode">
+                  <button
+                    type="button"
+                    className={`term-mode-btn ${loan.termMode === 'years' ? 'active' : ''}`}
+                    onClick={() => handleTermModeChange('years')}
+                  >
+                    Loan Term
+                  </button>
+                  <button
+                    type="button"
+                    className={`term-mode-btn ${loan.termMode === 'maturity' ? 'active' : ''}`}
+                    onClick={() => handleTermModeChange('maturity')}
+                  >
+                    Maturity Date
+                  </button>
+                </div>
+              </div>
+
+              {loan.termMode === 'years' ? (
+                <div className="form-group">
+                  <label htmlFor={`termYears-${loan.id}`}>Term (Years)</label>
+                  <input
+                    id={`termYears-${loan.id}`}
+                    type="number"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={loan.termYears}
+                    onChange={(e) => handleChange('termYears', e.target.value)}
+                    placeholder="30"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label htmlFor={`maturityDate-${loan.id}`}>Maturity Date</label>
+                  <input
+                    id={`maturityDate-${loan.id}`}
+                    type="date"
+                    value={loan.maturityDate}
+                    onChange={(e) => handleChange('maturityDate', e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
               )}
             </div>
-          )}
-        </div>
 
-        <div className="form-section-divider">
-          <h4>Optional: Accelerate Your Payoff</h4>
-        </div>
-
-        <div className="loan-form-row">
-          <div className="form-group form-group--toggle">
-            <label>Additional Repayment</label>
-            <div className="term-mode-toggle" role="group" aria-label="Additional repayment input mode">
-              <button
-                type="button"
-                className={`term-mode-btn ${loan.extraPaymentMode === 'percent' ? 'active' : ''}`}
-                onClick={() => handleExtraPaymentModeChange('percent')}
-              >
-                Extra %
-              </button>
-              <button
-                type="button"
-                className={`term-mode-btn ${loan.extraPaymentMode === 'amount' ? 'active' : ''}`}
-                onClick={() => handleExtraPaymentModeChange('amount')}
-              >
-                Monthly Repayment
-              </button>
+            <div className="form-section-divider">
+              <h4>Optional: Accelerate Your Payoff</h4>
             </div>
-          </div>
 
-          {loan.extraPaymentMode === 'percent' ? (
-            <div className="form-group form-group--percent">
-              <label htmlFor={`extraPaymentPercent-${loan.id}`}>Extra Payment (%)</label>
+            <div className="loan-form-row loan-form-row--paired">
+              <div className="form-group form-group--toggle">
+                <label>Additional Repayment</label>
+                <div className="term-mode-toggle" role="group" aria-label="Additional repayment input mode">
+                  <button
+                    type="button"
+                    className={`term-mode-btn ${loan.extraPaymentMode === 'percent' ? 'active' : ''}`}
+                    onClick={() => handleExtraPaymentModeChange('percent')}
+                  >
+                    Extra %
+                  </button>
+                  <button
+                    type="button"
+                    className={`term-mode-btn ${loan.extraPaymentMode === 'amount' ? 'active' : ''}`}
+                    onClick={() => handleExtraPaymentModeChange('amount')}
+                  >
+                    Monthly Repayment
+                  </button>
+                </div>
+              </div>
+
+              {loan.extraPaymentMode === 'percent' ? (
+                <div className="form-group">
+                  <label htmlFor={`extraPaymentPercent-${loan.id}`}>Extra Payment (%)</label>
+                  <input
+                    id={`extraPaymentPercent-${loan.id}`}
+                    type="number"
+                    min="0"
+                    max="20"
+                    step="0.1"
+                    value={loan.extraPaymentPercent}
+                    onChange={(e) => handleChange('extraPaymentPercent', e.target.value)}
+                    placeholder="10"
+                  />
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label htmlFor={`monthlyRepaymentAmount-${loan.id}`}>Monthly Repayment ($)</label>
+                  <input
+                    id={`monthlyRepaymentAmount-${loan.id}`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={loan.monthlyRepaymentAmount}
+                    onChange={(e) => handleChange('monthlyRepaymentAmount', e.target.value)}
+                    placeholder="3500"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="form-section-divider">
+              <h4>Optional: Offset Account</h4>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor={`offsetAmount-${loan.id}`}>Offset Amount ($)</label>
               <input
-                id={`extraPaymentPercent-${loan.id}`}
+                id={`offsetAmount-${loan.id}`}
                 type="number"
                 min="0"
-                max="20"
-                step="0.1"
-                value={loan.extraPaymentPercent}
-                onChange={(e) => handleChange('extraPaymentPercent', e.target.value)}
-                placeholder="10"
+                step="1"
+                value={loan.offsetAmount}
+                onChange={(e) => handleChange('offsetAmount', e.target.value)}
+                placeholder="50000"
               />
+              <small className="form-help-text">
+                Amount in offset account that reduces interest on this loan
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <div className="loan-card loan-card--results">
+          <h4 className="loan-results-title">Monthly Payments</h4>
+          {payments ? (
+            <div className="loan-results-content">
+              <div className="loan-result-item">
+                <span className="loan-result-label">Standard Payment</span>
+                <span className="loan-result-value">${formatCurrency(payments.main)}</span>
+              </div>
+              {payments.extra > 0 && (
+                <div className="loan-result-item">
+                  <span className="loan-result-label">Additional Repayment</span>
+                  <span className="loan-result-value">${formatCurrency(payments.extra)}</span>
+                </div>
+              )}
+              {payments.offset > 0 && (
+                <div className="loan-result-item">
+                  <span className="loan-result-label">Offset Payment</span>
+                  <span className="loan-result-value">${formatCurrency(payments.offset)}</span>
+                </div>
+              )}
+              <div className="loan-result-item loan-result-item--total">
+                <span className="loan-result-label">Total Monthly</span>
+                <span className="loan-result-value">${formatCurrency(totalMonthlyPayment)}</span>
+              </div>
             </div>
           ) : (
-            <div className="form-group form-group--money">
-              <label htmlFor={`monthlyRepaymentAmount-${loan.id}`}>Monthly Repayment ($)</label>
-              <input
-                id={`monthlyRepaymentAmount-${loan.id}`}
-                type="number"
-                min="0"
-                step="0.01"
-                value={loan.monthlyRepaymentAmount}
-                onChange={(e) => handleChange('monthlyRepaymentAmount', e.target.value)}
-                placeholder="3500"
-              />
+            <div className="loan-results-empty">
+              <p>Enter loan details and click Calculate to see monthly payments.</p>
             </div>
           )}
-        </div>
-
-        {(loan.extraPaymentMode === 'percent' || standardMonthlyPayment > 0 || calculatedExtraPayment > 0) && (
-          <div className="loan-form-notes">
-            {loan.extraPaymentMode === 'percent' && (
-              <small className="form-help-text">
-                Extra amount paid directly to principal each month (max 20%)
-              </small>
-            )}
-            {loan.extraPaymentMode === 'percent' && calculatedTotalRepayment > standardMonthlyPayment && (
-              <small className="form-help-text">
-                Total monthly repayment: $
-                {calculatedTotalRepayment.toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </small>
-            )}
-            {loan.extraPaymentMode === 'amount' && (
-              <small className="form-help-text">
-                Total amount you want to pay each month, including the standard repayment
-              </small>
-            )}
-            {loan.extraPaymentMode === 'amount' && standardMonthlyPayment > 0 && (
-              <small className="form-help-text">
-                Standard monthly payment: $
-                {standardMonthlyPayment.toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </small>
-            )}
-            {loan.extraPaymentMode === 'amount' && calculatedExtraPayment > 0 && (
-              <small className="form-help-text">
-                Additional repayment: $
-                {calculatedExtraPayment.toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </small>
-            )}
-          </div>
-        )}
-
-        <div className="form-section-divider">
-          <h4>Optional: Offset Account</h4>
-        </div>
-
-        <div className="loan-form-row">
-          <div className="form-group form-group--amount">
-            <label htmlFor={`offsetAmount-${loan.id}`}>Offset Amount ($)</label>
-            <input
-              id={`offsetAmount-${loan.id}`}
-              type="number"
-              min="0"
-              step="1"
-              value={loan.offsetAmount}
-              onChange={(e) => handleChange('offsetAmount', e.target.value)}
-              placeholder="50000"
-            />
-          </div>
-          <small className="form-help-text form-help-text--inline">
-            Amount in offset account that reduces interest on this loan
-          </small>
         </div>
       </div>
     </div>
