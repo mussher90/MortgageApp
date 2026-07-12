@@ -41,7 +41,7 @@ export interface MortgageComparison {
  */
 export function calculateTermYearsFromMaturityDate(
   maturityDate: string,
-  startDate: Date = new Date()
+  startDate: Date = getLoanStartDate()
 ): number {
   if (!maturityDate) {
     return 0;
@@ -78,12 +78,105 @@ export function formatDateForInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export function getLoanStartDate(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+export function getDefaultLoanStartDateString(): string {
+  return formatDateForInput(getLoanStartDate());
+}
+
+export function parseLoanStartDate(dateStr: string): Date {
+  if (!dateStr) {
+    return getLoanStartDate();
+  }
+
+  const parsed = new Date(`${dateStr}T00:00:00`);
+  if (isNaN(parsed.getTime())) {
+    return getLoanStartDate();
+  }
+
+  return new Date(parsed.getFullYear(), parsed.getMonth(), 1);
+}
+
+export function calculatePaymentMonthFromDate(
+  paymentDate: Date,
+  startDate: Date = getLoanStartDate()
+): number {
+  const paymentMonthStart = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), 1);
+  const startMonthStart = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+
+  if (paymentMonthStart < startMonthStart) {
+    return 0;
+  }
+
+  return (
+    (paymentMonthStart.getFullYear() - startMonthStart.getFullYear()) * 12 +
+    (paymentMonthStart.getMonth() - startMonthStart.getMonth()) +
+    1
+  );
+}
+
+/**
+ * Formats a year-month string for use in month inputs (YYYY-MM)
+ */
+export function formatYearMonthForInput(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+/**
+ * Converts a calendar month (YYYY-MM) to a loan payment month number
+ * (month 1 = first month of the loan, based on the loan start date)
+ */
+export function calculatePaymentMonthFromYearMonth(
+  paymentMonth: string,
+  startDate: Date = getLoanStartDate()
+): number {
+  if (!paymentMonth || !/^\d{4}-\d{2}$/.test(paymentMonth)) {
+    return 0;
+  }
+
+  const [yearStr, monthStr] = paymentMonth.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+
+  if (!year || month < 1 || month > 12) {
+    return 0;
+  }
+
+  return calculatePaymentMonthFromDate(new Date(year, month - 1, 1), startDate);
+}
+
+/**
+ * Returns the latest allowable payment month (YYYY-MM) for a loan term
+ */
+export function calculateMaxPaymentMonth(
+  termYears: number,
+  startDate: Date = getLoanStartDate()
+): string {
+  const totalMonths = Math.max(Math.floor(termYears * 12), 1);
+  const targetDate = new Date(
+    startDate.getFullYear(),
+    startDate.getMonth() + totalMonths - 1,
+    1
+  );
+  return formatYearMonthForInput(targetDate.getFullYear(), targetDate.getMonth() + 1);
+}
+
+/**
+ * Returns the first allowable payment month (YYYY-MM)
+ */
+export function getMinPaymentMonth(startDate: Date = getLoanStartDate()): string {
+  return formatYearMonthForInput(startDate.getFullYear(), startDate.getMonth() + 1);
+}
+
 /**
  * Calculates a maturity date from a loan term in years
  */
 export function calculateMaturityDateFromTermYears(
   termYears: number,
-  startDate: Date = new Date()
+  startDate: Date = getLoanStartDate()
 ): string {
   if (termYears <= 0) {
     return '';
@@ -192,15 +285,15 @@ export function calculateMonthlyRepaymentFromPercent(
 export function calculateYearlyPayments(
   principal: number,
   annualRate: number,
-  termYears: number
+  termYears: number,
+  startDate: Date = getLoanStartDate()
 ): YearlyPayment[] {
   const monthlyPayment = calculateMonthlyPayment(principal, annualRate, termYears);
   const dailyRate = annualRate / 100 / 365;
   const yearlyPayments: YearlyPayment[] = [];
 
   let remainingBalance = principal;
-  // Start from a reference date (e.g., January 1, 2024)
-  let currentDate = new Date(2024, 0, 1);
+  let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
 
   for (let year = 1; year <= termYears; year++) {
     let yearlyPrincipal = 0;
@@ -256,7 +349,8 @@ export function calculateYearlyPaymentsWithExtras(
   annualRate: number,
   termYears: number,
   extraPaymentPercent: number = 0,
-  offsetAccount: OffsetAccount | null = null
+  offsetAccount: OffsetAccount | null = null,
+  startDate: Date = getLoanStartDate()
 ): MortgageComparison {
   const mainLoanMonthlyPayment = calculateMonthlyPayment(principal, annualRate, termYears);
   const dailyRate = annualRate / 100 / 365;
@@ -274,7 +368,7 @@ export function calculateYearlyPaymentsWithExtras(
   const totalMonthlyPayment = mainLoanMonthlyPayment + offsetLoanMonthlyPayment;
   
   // Calculate standard payments (no extras, no offset)
-  const standardPayments = calculateYearlyPayments(principal, annualRate, termYears);
+  const standardPayments = calculateYearlyPayments(principal, annualRate, termYears, startDate);
   
   // Calculate accelerated payments (with extras and/or offset)
   const extraPaymentAmount = (mainLoanMonthlyPayment * extraPaymentPercent) / 100;
@@ -282,7 +376,7 @@ export function calculateYearlyPaymentsWithExtras(
   
   let remainingBalance = principal;
   let offsetRemainingBalance = offsetAccount && offsetAccount.amount > 0 ? offsetAccount.amount : 0;
-  let currentDate = new Date(2024, 0, 1);
+  let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
   let totalMonths = 0;
   let totalExtraPayments = 0;
   const maxMonths = Math.max(termYears * 12, offsetAccount ? offsetAccount.termYears * 12 : 0);
@@ -388,7 +482,7 @@ export function calculateYearlyPaymentsWithExtras(
   // Calculate actual months to pay off standard loan
   let standardMonths = termYears * 12;
   let standardBalance = principal;
-  let standardDate = new Date(2024, 0, 1);
+  let standardDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
   let standardMonthCount = 0;
   
   const standardMonthlyPayment = calculateMonthlyPayment(principal, annualRate, termYears);
@@ -430,10 +524,17 @@ export function calculateYearlyPaymentsWithExtras(
 export interface LoanInput {
   id: string;
   amount: number;
+  startDate: Date;
   rate: number;
   termYears: number;
   extraPaymentAmount: number;
+  lumpSumPayments: LumpSumPayment[];
   offsetAccount: OffsetAccount | null;
+}
+
+export interface LumpSumPayment {
+  amount: number;
+  month: number;
 }
 
 /**
@@ -452,8 +553,10 @@ export function calculateMultipleLoans(loans: LoanInput[]): {
   const loanMonthlyPayments: { [loanId: string]: { main: number; extra: number; offset: number } } = {};
   const loanCalculations: Array<{
     id: string;
+    startDate: Date;
     monthlyPayment: number;
     extraPaymentAmount: number;
+    lumpSumPayments: LumpSumPayment[];
     offsetMonthlyPayment: number;
     dailyRate: number;
     offsetDailyRate: number | null;
@@ -463,7 +566,6 @@ export function calculateMultipleLoans(loans: LoanInput[]): {
   }> = [];
 
   let totalMonthlyPayment = 0;
-  const maxTermYears = Math.max(...loans.map(l => l.termYears));
 
   // Calculate monthly payments for each loan
   for (const loan of loans) {
@@ -483,8 +585,10 @@ export function calculateMultipleLoans(loans: LoanInput[]): {
 
     loanCalculations.push({
       id: loan.id,
+      startDate: loan.startDate,
       monthlyPayment: mainMonthlyPayment,
       extraPaymentAmount,
+      lumpSumPayments: loan.lumpSumPayments,
       offsetMonthlyPayment: 0, // No separate offset payments
       dailyRate: loan.rate / 100 / 365,
       offsetDailyRate: null, // Not used for offset account
@@ -494,76 +598,119 @@ export function calculateMultipleLoans(loans: LoanInput[]): {
     });
   }
 
-  // Calculate yearly payments
-  const yearlyPayments: YearlyPayment[] = [];
+  // Calculate yearly payments grouped by calendar year
+  const yearlyByCalendar = new Map<
+    number,
+    {
+      principal: number;
+      interest: number;
+      loanPayments: { [loanId: string]: { principal: number; interest: number } };
+    }
+  >();
   const loanBalances: { [loanId: string]: number } = {};
 
   // Initialize balances
   for (const loan of loans) {
     loanBalances[loan.id] = loan.amount;
-    // Offset account doesn't have a separate balance - it just reduces the main loan interest
   }
 
-  let currentDate = new Date(2024, 0, 1);
+  const earliestStartDate = loanCalculations.reduce((earliest, calc) => {
+    return calc.startDate < earliest ? calc.startDate : earliest;
+  }, loanCalculations[0].startDate);
 
-  for (let year = 1; year <= maxTermYears; year++) {
-    let totalYearlyPrincipal = 0;
-    let totalYearlyInterest = 0;
-    const loanPayments: { [loanId: string]: { principal: number; interest: number } } = {};
+  let maxSimulationMonths = 0;
+  for (const calc of loanCalculations) {
+    const monthsUntilStart =
+      (calc.startDate.getFullYear() - earliestStartDate.getFullYear()) * 12 +
+      (calc.startDate.getMonth() - earliestStartDate.getMonth());
+    const loanDurationMonths = Math.ceil(calc.termYears * 12);
+    maxSimulationMonths = Math.max(maxSimulationMonths, monthsUntilStart + loanDurationMonths);
+  }
 
-    for (let month = 0; month < 12; month++) {
-      let monthHasPayments = false;
+  let currentDate = new Date(earliestStartDate);
 
-      for (const calc of loanCalculations) {
-        const loanBalance = loanBalances[calc.id] || 0;
+  for (let monthIndex = 0; monthIndex < maxSimulationMonths; monthIndex++) {
+    const calendarYear = currentDate.getFullYear();
+    let monthHasPayments = false;
+    let monthPrincipal = 0;
+    let monthInterest = 0;
+    const monthLoanPayments: { [loanId: string]: { principal: number; interest: number } } = {};
 
-        if (loanBalance <= 0.01) continue;
+    for (const calc of loanCalculations) {
+      const loanBalance = loanBalances[calc.id] || 0;
+      const paymentMonth = calculatePaymentMonthFromDate(currentDate, calc.startDate);
+      const maxPaymentMonth = Math.ceil(calc.termYears * 12);
 
-        monthHasPayments = true;
-        const daysInMonth = getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
+      if (loanBalance <= 0.01 || paymentMonth < 1 || paymentMonth > maxPaymentMonth) continue;
 
-        // Main loan calculation with offset
-        let loanInterest = 0;
-        let loanPrincipal = 0;
-        if (loanBalance > 0.01) {
-          // Calculate interest-bearing balance: loan balance minus offset amount
-          const offsetAmount = calc.offsetAccount ? calc.offsetAccount.offsetAmount : 0;
-          const interestBearingBalance = Math.max(0, loanBalance - offsetAmount);
-          
-          loanInterest = interestBearingBalance * (Math.pow(1 + calc.dailyRate, daysInMonth) - 1);
-          const regularPrincipal = Math.min(
-            calc.monthlyPayment - loanInterest,
-            loanBalance
-          );
-          loanPrincipal = Math.min(regularPrincipal + calc.extraPaymentAmount, loanBalance);
+      monthHasPayments = true;
+      const daysInMonth = getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
 
-          if (!loanPayments[calc.id]) {
-            loanPayments[calc.id] = { principal: 0, interest: 0 };
-          }
-          loanPayments[calc.id].principal += loanPrincipal;
-          loanPayments[calc.id].interest += loanInterest;
+      let loanInterest = 0;
+      let loanPrincipal = 0;
+      const offsetAmount = calc.offsetAccount ? calc.offsetAccount.offsetAmount : 0;
+      const interestBearingBalance = Math.max(0, loanBalance - offsetAmount);
 
-          totalYearlyPrincipal += loanPrincipal;
-          totalYearlyInterest += loanInterest;
-          loanBalances[calc.id] = loanBalance - loanPrincipal;
-        }
+      loanInterest = interestBearingBalance * (Math.pow(1 + calc.dailyRate, daysInMonth) - 1);
+      const regularPrincipal = Math.min(calc.monthlyPayment - loanInterest, loanBalance);
+      loanPrincipal = Math.min(regularPrincipal + calc.extraPaymentAmount, loanBalance);
+
+      let remainingBalance = loanBalance - loanPrincipal;
+
+      const lumpSumsThisMonth = calc.lumpSumPayments.filter(
+        (lumpSum) => lumpSum.month === paymentMonth
+      );
+      for (const lumpSum of lumpSumsThisMonth) {
+        if (remainingBalance <= 0.01) break;
+        const lumpSumPrincipal = Math.min(lumpSum.amount, remainingBalance);
+        loanPrincipal += lumpSumPrincipal;
+        remainingBalance -= lumpSumPrincipal;
       }
 
-      if (!monthHasPayments) break;
-      currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+      monthLoanPayments[calc.id] = {
+        principal: loanPrincipal,
+        interest: loanInterest,
+      };
+      monthPrincipal += loanPrincipal;
+      monthInterest += loanInterest;
+      loanBalances[calc.id] = remainingBalance;
     }
 
-    if (totalYearlyPrincipal > 0 || totalYearlyInterest > 0) {
+    if (!monthHasPayments) break;
+
+    const yearBucket = yearlyByCalendar.get(calendarYear) || {
+      principal: 0,
+      interest: 0,
+      loanPayments: {},
+    };
+    yearBucket.principal += monthPrincipal;
+    yearBucket.interest += monthInterest;
+
+    for (const [loanId, payments] of Object.entries(monthLoanPayments)) {
+      if (!yearBucket.loanPayments[loanId]) {
+        yearBucket.loanPayments[loanId] = { principal: 0, interest: 0 };
+      }
+      yearBucket.loanPayments[loanId].principal += payments.principal;
+      yearBucket.loanPayments[loanId].interest += payments.interest;
+    }
+
+    yearlyByCalendar.set(calendarYear, yearBucket);
+    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+  }
+
+  const yearlyPayments: YearlyPayment[] = Array.from(yearlyByCalendar.entries())
+    .sort(([yearA], [yearB]) => yearA - yearB)
+    .map(([calendarYear, totals]) => {
       const totalRemainingBalance = Object.values(loanBalances).reduce((sum, bal) => sum + bal, 0);
 
-      yearlyPayments.push({
-        year,
-        principal: Math.round(totalYearlyPrincipal * 100) / 100,
-        interest: Math.round(totalYearlyInterest * 100) / 100,
-        total: Math.round((totalYearlyPrincipal + totalYearlyInterest) * 100) / 100,
+      return {
+        year: calendarYear,
+        principal: Math.round(totals.principal * 100) / 100,
+        interest: Math.round(totals.interest * 100) / 100,
+        total: Math.round((totals.principal + totals.interest) * 100) / 100,
         remainingBalance: Math.round(totalRemainingBalance * 100) / 100,
         loanPayments: Object.fromEntries(
-          Object.entries(loanPayments).map(([id, payments]) => [
+          Object.entries(totals.loanPayments).map(([id, payments]) => [
             id,
             {
               principal: Math.round(payments.principal * 100) / 100,
@@ -571,9 +718,8 @@ export function calculateMultipleLoans(loans: LoanInput[]): {
             },
           ])
         ),
-      });
-    }
-  }
+      };
+    });
 
   return { yearlyPayments, totalMonthlyPayment, loanMonthlyPayments };
 }

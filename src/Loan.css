@@ -307,6 +307,51 @@
   color: white;
 }
 
+.lump-sum-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lump-sum-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-add-lump-sum {
+  align-self: flex-start;
+  padding: 8px 14px;
+  background: #edf2ff;
+  color: #667eea;
+  border: 2px solid #c3d0ff;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-add-lump-sum:hover {
+  background: #dbe4ff;
+}
+
+.btn-remove-lump-sum {
+  align-self: flex-start;
+  padding: 4px 10px;
+  background: transparent;
+  color: #dc3545;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-remove-lump-sum:hover {
+  background: #fde8eb;
+}
+
 @media (max-width: 900px) {
   .loan-body {
     grid-template-columns: 1fr;

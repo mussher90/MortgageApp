@@ -56,16 +56,16 @@ export const Chart: React.FC<ChartProps> = ({ data, loanIds = [] }) => {
         }}
       >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          dataKey="year" 
-          label={{ value: 'Year', position: 'insideBottom', offset: -5 }}
+        <XAxis
+          dataKey="year"
+          label={{ value: 'Calendar Year', position: 'insideBottom', offset: -5 }}
         />
         <YAxis 
           label={{ value: 'Amount ($)', angle: -90, position: 'insideLeft' }}
         />
         <Tooltip 
           formatter={(value: number) => `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          labelFormatter={(label) => `Year ${label}`}
+          labelFormatter={(label) => `Calendar Year ${label}`}
         />
         <Legend />
         {hasMultipleLoans && loanIds.length > 0 ? (

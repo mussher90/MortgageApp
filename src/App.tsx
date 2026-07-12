@@ -6,9 +6,13 @@ import {
   calculateExtraPaymentFromPercent,
   calculateMonthlyPayment,
   calculateMultipleLoans,
+  calculatePaymentMonthFromYearMonth,
   calculateTermYearsFromMaturityDate,
+  getDefaultLoanStartDateString,
   LoanInput,
+  LumpSumPayment,
   OffsetAccount,
+  parseLoanStartDate,
 } from './utilities';
 import './App.css';
 
@@ -17,6 +21,7 @@ function App() {
     {
       id: '1',
       amount: '',
+      startDate: getDefaultLoanStartDateString(),
       rate: '',
       termMode: 'years',
       termYears: '',
@@ -24,6 +29,7 @@ function App() {
       extraPaymentMode: 'percent',
       extraPaymentPercent: '0',
       monthlyRepaymentAmount: '',
+      lumpSumPayments: [],
       offsetAmount: '',
     },
   ]);
@@ -46,6 +52,7 @@ function App() {
       {
         id: newLoanId,
         amount: '',
+        startDate: getDefaultLoanStartDateString(),
         rate: '',
         termMode: 'years',
         termYears: '',
@@ -53,6 +60,7 @@ function App() {
         extraPaymentMode: 'percent',
         extraPaymentPercent: '0',
         monthlyRepaymentAmount: '',
+        lumpSumPayments: [],
         offsetAmount: '',
       },
     ]);
@@ -72,9 +80,10 @@ function App() {
       .map((loan) => {
         const amount = parseFloat(loan.amount);
         const rate = parseFloat(loan.rate);
+        const startDate = parseLoanStartDate(loan.startDate);
         const term =
           loan.termMode === 'maturity'
-            ? calculateTermYearsFromMaturityDate(loan.maturityDate)
+            ? calculateTermYearsFromMaturityDate(loan.maturityDate, startDate)
             : parseFloat(loan.termYears);
         const extraPercent = Math.min(Math.max(parseFloat(loan.extraPaymentPercent) || 0, 0), 20);
         const monthlyRepaymentAmount = Math.max(parseFloat(loan.monthlyRepaymentAmount) || 0, 0);
@@ -99,12 +108,27 @@ function App() {
             offsetAmount: offsetAmount,
           } : null;
 
+          const lumpSumPayments: LumpSumPayment[] = loan.lumpSumPayments
+            .map((lumpSum) => {
+              const amount = Math.max(parseFloat(lumpSum.amount) || 0, 0);
+              const month = calculatePaymentMonthFromYearMonth(lumpSum.paymentMonth, startDate);
+              const maxMonth = Math.floor(term * 12);
+
+              if (amount > 0 && month >= 1 && month <= maxMonth) {
+                return { amount, month };
+              }
+              return null;
+            })
+            .filter((lumpSum): lumpSum is LumpSumPayment => lumpSum !== null);
+
           return {
             id: loan.id,
             amount,
+            startDate,
             rate,
             termYears: term,
             extraPaymentAmount,
+            lumpSumPayments,
             offsetAccount,
           };
         }
@@ -125,6 +149,7 @@ function App() {
       {
         id: '1',
         amount: '',
+        startDate: getDefaultLoanStartDateString(),
         rate: '',
         termMode: 'years',
         termYears: '',
@@ -132,6 +157,7 @@ function App() {
         extraPaymentMode: 'percent',
         extraPaymentPercent: '0',
         monthlyRepaymentAmount: '',
+        lumpSumPayments: [],
         offsetAmount: '',
       },
     ]);
