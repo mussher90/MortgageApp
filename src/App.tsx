@@ -192,7 +192,9 @@ function App() {
               </div>
             )}
 
-            <Chart data={results.yearlyPayments} loanIds={loans.map(l => l.id)} />
+            <div className="results-chart">
+              <Chart data={results.yearlyPayments} loanIds={loans.map(l => l.id)} />
+            </div>
 
             <div className="summary">
               <h3>Summary</h3>
